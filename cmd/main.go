@@ -51,7 +51,7 @@ func main() {
 			}
 
 			// avoid flood
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
 
 		time.Sleep(env.ChecksInterval)
