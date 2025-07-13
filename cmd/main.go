@@ -1,20 +1,35 @@
 package main
 
 import (
-	"osm-changesets-bot/env"
-	"osm-changesets-bot/internal"
+	"errors"
 	"time"
+
+	"github.com/legzdev/OSM-Changesets-Bot/database"
+	"github.com/legzdev/OSM-Changesets-Bot/env"
+	"github.com/legzdev/OSM-Changesets-Bot/internal"
 
 	"github.com/charmbracelet/log"
 )
 
 func main() {
-	env.Load()
+	log.Info("bot started!")
+
+	err := env.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := database.Init()
+	if err != nil {
+		log.Fatal("db init:", err)
+	}
 
 	for {
-		latest, err := internal.GetLatestChangesetId()
+		latest, err := db.GetLatest()
 		if err != nil {
-			log.Error("error getting latest changeset", "err", err)
+			if !errors.Is(err, database.ErrNotFound) {
+				log.Error("error getting latest changeset", "err", err)
+			}
 		}
 
 		changesets, err := internal.NewChangesets(latest)
@@ -25,20 +40,20 @@ func main() {
 		for _, changeset := range changesets {
 			err := internal.SendToTelegram(changeset)
 			if err != nil {
-				log.Error("error sending changeset to telegram", "id", changeset.Id, "err", err)
+				log.Error("error sending changeset to telegram", "id", changeset.ID, "err", err)
 				break
 			}
 
-			erro := internal.SetLatestChangesetId(changeset.Id)
+			err = db.SetLatest(changeset.ID)
 			if err != nil {
-				log.Error("error setting latest changeset", "id", changeset.Id, "err", erro)
+				log.Error("error setting latest changeset", "id", changeset.ID, "err", err)
 				break
 			}
 
 			// avoid flood
-			time.Sleep(5 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 
-		time.Sleep(time.Duration(env.TaskInterval) * time.Second)
+		time.Sleep(env.ChecksInterval)
 	}
 }

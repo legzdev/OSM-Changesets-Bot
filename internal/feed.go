@@ -3,20 +3,22 @@ package internal
 import (
 	"errors"
 	"fmt"
-	"osm-changesets-bot/env"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/legzdev/OSM-Changesets-Bot/env"
+	"github.com/legzdev/OSM-Changesets-Bot/types"
+
 	"github.com/mmcdole/gofeed"
 )
 
-func NewChangesets(latest int) ([]Changeset, error) {
-	var changesets []Changeset
+func NewChangesets(latest types.ChangesetID) ([]types.Changeset, error) {
+	var changesets []types.Changeset
 	parser := gofeed.NewParser()
 
-	feed, err := parser.ParseURL(env.FeedUrl)
+	feed, err := parser.ParseURL(env.FeedURL)
 	if err != nil {
 		return changesets, errors.New("error getting new changesets")
 	}
@@ -36,7 +38,7 @@ func NewChangesets(latest int) ([]Changeset, error) {
 			return changesets, errors.New("unexpected changeset title")
 		}
 
-		id, err := strconv.Atoi(titleStart[1])
+		id, err := strconv.ParseInt(titleStart[1], 10, 64)
 		if err != nil {
 			return changesets, fmt.Errorf("changeset id must be an integer: %w", err)
 		}
@@ -65,18 +67,16 @@ func NewChangesets(latest int) ([]Changeset, error) {
 
 			if len(changesMatch) == 4 {
 				changes = changesMatch
-
 			} else if description == "" && len(changes) == 0 {
 				description = line
-
 			} else {
 				// example value: Changeset flagged for: New mapper
 				_ = line
 			}
 		}
 
-		changeset := Changeset{}
-		changeset.Id = id
+		var changeset types.Changeset
+		changeset.ID = id
 		changeset.Title = item.Title
 		changeset.Description = description
 		changeset.Create = changes[1]

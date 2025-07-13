@@ -10,8 +10,9 @@ Easy way to see the [changesets](https://wiki.openstreetmap.org/wiki/Changeset) 
 Environment variables are necessary, to declare them just create a `.env` file at the root of the project (you can use another method if you prefer).
 
 -   **BOT_TOKEN**: Telegram bot token, is obtained from [@BotFather](https://t.me/BotFather) (Create a new bot if required)
--   **CHANNEL_ID**: Unique identifier for the target chat or username of the target channel (in the format @channelusername)
--   **DETA_KEY**: [Deta](https://deta.space) API key.
+-   **CHANNEL_ID**: Unique identifier for the target chat.
 -   **FEED_URL**: URL of the [OSMCha](https://osmcha.org) filter that you want to use.
--   **TASK_INTERVAL**: Time in seconds between each feed parse.
--   **RETRY_INTERVAL**: Time in seconds to wait after each error before running the task again.
+
+-   **DATABASE_URL**: Custom dstabase URL (default `database.db`).
+-   **CHECKS_INTERVAL**: Time in seconds between each feed parse (default 60s).
+-   **RETRIES_INTERVAL**: Time in seconds to wait after each error before running the task again (default 5s).

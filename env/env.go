@@ -1,61 +1,77 @@
 package env
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
 
-const (
-	DetaBaseName string = "changesets"
-)
-
 var (
-	BotToken      string
-	ChannelId     int
-	FeedUrl       string
-	DetaKey       string
-	TaskInterval  int
-	RetryInterval int
+	BotToken  string
+	ChannelID int64
+
+	FeedURL     string
+	DataBaseURL string
+
+	ChecksInterval  time.Duration
+	RetriesInterval time.Duration
 )
 
-func Load() {
+type ErrMissingEnv struct {
+	env string
+}
+
+func (err *ErrMissingEnv) Error() string {
+	return fmt.Sprintf("missing or invalid env: %s", err.env)
+}
+
+func Load() (err error) {
 	godotenv.Load()
 
 	BotToken = os.Getenv("BOT_TOKEN")
-	if len(BotToken) == 0 {
-		panic("bot token can not be empty")
+	if BotToken == "" {
+		return &ErrMissingEnv{env: "BOT_TOKEN"}
 	}
 
-	channelIdEnv := os.Getenv("CHANNEL_ID")
-	channelIdParsed, err := strconv.Atoi(channelIdEnv)
+	channelID := os.Getenv("CHANNEL_ID")
+
+	ChannelID, err = strconv.ParseInt(channelID, 10, 64)
 	if err != nil {
-		panic("channel id must be an int")
-	}
-	ChannelId = channelIdParsed
-
-	FeedUrl = os.Getenv("FEED_URL")
-	if len(FeedUrl) == 0 {
-		panic("feed url must be valid")
+		return &ErrMissingEnv{env: "CHANNEL_ID"}
 	}
 
-	DetaKey = os.Getenv("DETA_KEY")
-	if len(DetaKey) == 0 {
-		panic("deta key can not be empty")
+	DataBaseURL = os.Getenv("DATABASE_URL")
+	if DataBaseURL == "" {
+		DataBaseURL = "database.db"
 	}
 
-	taskInterval := os.Getenv("TASK_INTERVAL")
-	taskIntervalParsed, err := strconv.Atoi(taskInterval)
-	if err != nil {
-		panic("task interval must be an integer")
+	FeedURL = os.Getenv("FEED_URL")
+	if FeedURL == "" {
+		return &ErrMissingEnv{env: "FEED_URL"}
 	}
-	TaskInterval = taskIntervalParsed
 
-	retryInterval := os.Getenv("RETRY_INTERVAL")
-	retryIntervalParsed, err := strconv.Atoi(retryInterval)
-	if err != nil {
-		panic("retry interval must be an integer")
+	taskInterval := os.Getenv("CHECKS_INTERVAL")
+	if taskInterval == "" {
+		ChecksInterval = 1 * time.Minute
+	} else {
+		ChecksInterval, err = time.ParseDuration(taskInterval)
+		if err != nil {
+			return &ErrMissingEnv{env: "CHECKS_INTERVAL"}
+		}
 	}
-	RetryInterval = retryIntervalParsed
+
+	retriesInterval := os.Getenv("RETRIES_INTERVAL")
+	if retriesInterval == "" {
+		RetriesInterval = 5 * time.Second
+	} else {
+		RetriesInterval, err = time.ParseDuration(retriesInterval)
+		if err != nil {
+			return &ErrMissingEnv{env: "RETRIES_INTERVAL"}
+		}
+	}
+
+	return nil
 }

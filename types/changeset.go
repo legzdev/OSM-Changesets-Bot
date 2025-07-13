@@ -1,9 +1,11 @@
-package internal
+package types
 
 import "time"
 
+type ChangesetID = int64
+
 type Changeset struct {
-	Id          int
+	ID          ChangesetID
 	Title       string
 	Description string
 	Create      string

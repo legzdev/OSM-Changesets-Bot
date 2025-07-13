@@ -3,15 +3,21 @@ package internal
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
-	"osm-changesets-bot/env"
+	"strings"
+	"time"
+
+	"github.com/legzdev/OSM-Changesets-Bot/env"
+	"github.com/legzdev/OSM-Changesets-Bot/types"
 )
 
 type InlineKeyboardButton struct {
 	Text string `json:"text"`
-	Url  string `json:"url"`
+	URL  string `json:"url"`
 }
 
 type InlineKeyboardMarkup struct {
@@ -19,66 +25,91 @@ type InlineKeyboardMarkup struct {
 }
 
 type Message struct {
-	ChatId                int                  `json:"chat_id"`
+	ChatID                int64                `json:"chat_id"`
 	Text                  string               `json:"text"`
+	ParseMode             string               `json:"parse_mode"`
 	ReplyMarkup           InlineKeyboardMarkup `json:"reply_markup"`
 	DisableWebPagePreview bool                 `json:"disable_web_page_preview"`
 }
 
-func SendToTelegram(changeset Changeset) error {
+func SendToTelegram(changeset types.Changeset) error {
+	var builder strings.Builder
+	builder.WriteString("Changeset ")
 
-	date := changeset.Date.Format("2006-01-02 | 15:04:05")
-	msgText := fmt.Sprintf("%s\n\n%s\n\n%s\n🟢 %s | 🟠 %s | 🔴 %s", changeset.Title, changeset.Description, date, changeset.Create, changeset.Modify, changeset.Delete)
+	changesetURL := fmt.Sprintf("https://openstreetmap.org/changeset/%d", changeset.ID)
+	changesetFmt := fmt.Sprintf("<a href=\"%s\">%d</a>", changesetURL, changeset.ID)
+	builder.WriteString(changesetFmt)
 
-	changesetBtn := InlineKeyboardButton{}
-	changesetBtn.Text = "🌐 Changeset"
-	changesetBtn.Url = fmt.Sprintf("https://www.openstreetmap.org/changeset/%d", changeset.Id)
+	builder.WriteString(" by ")
 
-	userBtn := InlineKeyboardButton{}
-	userBtn.Text = "👤 User"
-	userBtn.Url = fmt.Sprintf("https://www.openstreetmap.org/user/%s", url.QueryEscape(changeset.Username))
+	userURL := fmt.Sprintf("https://openstreetmap.org/user/%s", url.QueryEscape(changeset.Username))
+	userFmt := fmt.Sprintf("<a href=\"%s\">%s</a>", userURL, changeset.Username)
+	builder.WriteString(userFmt)
+
+	builder.WriteString("\n\n")
+	builder.WriteString(changeset.Description)
+	builder.WriteString("\n\n")
+
+	date := changeset.Date.Format(time.DateTime)
+	builder.WriteString(date)
+	builder.WriteString("\n")
+
+	builder.WriteString("🟢")
+	builder.WriteString(changeset.Create)
+
+	builder.WriteString(" | 🟠")
+	builder.WriteString(changeset.Modify)
+
+	builder.WriteString(" | 🔴")
+	builder.WriteString(changeset.Delete)
 
 	osmChaBtn := InlineKeyboardButton{}
 	osmChaBtn.Text = "🌐 OSMCha"
-	osmChaBtn.Url = fmt.Sprintf("https://osmcha.org/changesets/%d", changeset.Id)
+	osmChaBtn.URL = fmt.Sprintf("https://osmcha.org/changesets/%d", changeset.ID)
 
 	overPassBtn := InlineKeyboardButton{}
 	overPassBtn.Text = "🌐 Overpass"
-	overPassBtn.Url = fmt.Sprintf("https://overpass-api.de/achavi/?changeset=%d", changeset.Id)
+	overPassBtn.URL = fmt.Sprintf("https://overpass-api.de/achavi/?changeset=%d", changeset.ID)
 
-	var inline_keyboard [][]InlineKeyboardButton
+	firstRow := []InlineKeyboardButton{
+		osmChaBtn, overPassBtn,
+	}
 
-	var firstRow []InlineKeyboardButton
-	firstRow = append(firstRow, changesetBtn, userBtn)
+	inline_keyboard := [][]InlineKeyboardButton{
+		firstRow,
+	}
 
-	var secondRow []InlineKeyboardButton
-	secondRow = append(secondRow, osmChaBtn, overPassBtn)
+	markup := InlineKeyboardMarkup{
+		InlineKeyboard: inline_keyboard,
+	}
 
-	inline_keyboard = append(inline_keyboard, firstRow, secondRow)
+	message := Message{
+		ChatID:                env.ChannelID,
+		Text:                  builder.String(),
+		ParseMode:             "HTML",
+		ReplyMarkup:           markup,
+		DisableWebPagePreview: true,
+	}
 
-	markup := InlineKeyboardMarkup{}
-	markup.InlineKeyboard = inline_keyboard
+	encodedMessage, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", env.BotToken)
 
-	data := Message{}
-	data.ChatId = env.ChannelId
-	data.Text = msgText
-	data.ReplyMarkup = markup
-	data.DisableWebPagePreview = true
-
-	apiUrl := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", env.BotToken)
-
-	requestData, err := json.Marshal(data)
+	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(encodedMessage))
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.Post(apiUrl, "application/json; charset=UTF-8", bytes.NewBuffer(requestData))
-	if err != nil {
-		return err
-	}
+	if resp.StatusCode != http.StatusOK {
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
 
-	// TODO: check response
-	_ = resp
+		return errors.New(string(data))
+	}
 
 	return nil
 }
