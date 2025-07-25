@@ -23,9 +23,7 @@ func NewChangesets(latest types.ChangesetID) ([]types.Changeset, error) {
 		return changesets, errors.New("error getting new changesets")
 	}
 
-	for i := 0; i < len(feed.Items); i++ {
-		item := feed.Items[i]
-
+	for _, item := range feed.Items {
 		titleSplited := strings.Split(item.Title, " by ")
 		if len(titleSplited) != 2 {
 			return changesets, errors.New("unexpected changeset title")

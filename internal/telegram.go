@@ -54,13 +54,13 @@ func SendToTelegram(changeset types.Changeset) error {
 	builder.WriteString(date)
 	builder.WriteString("\n")
 
-	builder.WriteString("🟢")
+	builder.WriteString("🟢 ")
 	builder.WriteString(changeset.Create)
 
-	builder.WriteString(" | 🟠")
+	builder.WriteString(" | 🟠 ")
 	builder.WriteString(changeset.Modify)
 
-	builder.WriteString(" | 🔴")
+	builder.WriteString(" | 🔴 ")
 	builder.WriteString(changeset.Delete)
 
 	osmChaBtn := InlineKeyboardButton{}

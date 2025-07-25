@@ -3,10 +3,15 @@ package env
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
+)
+
+const (
+	DataDir = "data"
 )
 
 var (
@@ -31,6 +36,11 @@ func (err *ErrMissingEnv) Error() string {
 func Load() (err error) {
 	godotenv.Load()
 
+	err = os.MkdirAll(DataDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	BotToken = os.Getenv("BOT_TOKEN")
 	if BotToken == "" {
 		return &ErrMissingEnv{env: "BOT_TOKEN"}
@@ -45,7 +55,7 @@ func Load() (err error) {
 
 	DataBaseURL = os.Getenv("DATABASE_URL")
 	if DataBaseURL == "" {
-		DataBaseURL = "database.db"
+		DataBaseURL = path.Join(DataDir, "database.db")
 	}
 
 	FeedURL = os.Getenv("FEED_URL")
