@@ -1,0 +1,12 @@
+services:
+  osm-changesets-bot:
+    image: ghcr.io/legzdev/osm-changesets-bot:latest
+    container_name: osm-changesets-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - osm-changesets-bot:/data
+
+volumes:
+  osm-changesets-bot:
+
